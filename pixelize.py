@@ -14,8 +14,10 @@ film = sys.argv[1]
 directory_og = film+'/frames'
 directory_pix = film+'/pix'
 directory_greyscale = film+'/greyscale'
-widths = [1600, 1024, 640, 128, 48]
-heights = [900, 576, 360, 72, 27]
+# widths = [ 640, 128, 48]
+# heights = [360, 72, 27]
+widths = [ 16]
+heights = [9]
 count=0
 
 if not os.path.exists(directory_pix):

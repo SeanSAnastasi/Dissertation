@@ -7,6 +7,9 @@ import random
 import matplotlib.pyplot as plt
 import sys
 import pandas as pd
+import plotly.graph_objs as go
+import plotly.io as pio
+from tqdm import tqdm
 
 def get_similarity(directory, num_dirs):
     n = num_dirs
@@ -58,16 +61,17 @@ def fit(directory_pix, directory_greyscale, num_dirs):
 
     # Extract histograms of all the images
     histograms = []
-    files = [f for f in os.listdir(directory_pix) if os.path.isfile(os.path.join(directory_pix, f)) and f.endswith(".png")]
+    print('INIT')
+    files = [f for f in tqdm(os.listdir(directory_pix)) if os.path.isfile(os.path.join(directory_pix, f)) and f.endswith(".png")]
     count = 0
     print('HISTOGRAM')
-    for file in files:
+    for file in tqdm(files):
         # Read the image
         img = cv2.imread(os.path.join(directory_pix, file))
         # Convert the image to HSV color space
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         # Extract the histogram
-        hist = cv2.calcHist([hsv], [0, 1, 2], None, [8, 4, 4], [0, 180, 0, 256, 0, 256])
+        hist = cv2.calcHist([hsv], [0, 1, 2], None, [16, 4, 8], [0, 180, 0, 256, 0, 256])
         histograms.append(hist)
         count = count+1
     # print('HISTOGRAM: '+str(count)+'/'+str(len(files)))
@@ -78,103 +82,69 @@ def fit(directory_pix, directory_greyscale, num_dirs):
     histograms = histograms.reshape(histograms.shape[0], -1)
     compactness,labels,centers=cv2.kmeans(np.float32(histograms),n,None,(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0),10,cv2.KMEANS_PP_CENTERS)
     # Create the folders
-    for i in range(n):
+    for i in tqdm(range(n)):
         if not os.path.exists(directory_pix+'/'+str(i+1)):
             os.mkdir(directory_pix+'/'+str(i+1))
         if not os.path.exists(directory_greyscale+'/'+str(i+1)):
             os.mkdir(directory_greyscale+'/'+str(i+1))
 
-    colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown', 'grey', 'black']
-    df = pd.DataFrame(histograms, columns=["bin_1", "bin_2", "bin_3", "bin_4", "bin_5", "bin_6", "bin_7", "bin_8",
-                                            "bin_9", "bin_10", "bin_11", "bin_12", "bin_13", "bin_14", "bin_15", "bin_16",
-                                            "bin_17", "bin_18", "bin_19", "bin_20", "bin_21", "bin_22", "bin_23", "bin_24",
-                                            "bin_25", "bin_26", "bin_27", "bin_28", "bin_29", "bin_30", "bin_31", "bin_32",
-                                            "bin_33", "bin_34", "bin_35", "bin_36", "bin_37", "bin_38", "bin_39", "bin_40",
-                                            "bin_41", "bin_42", "bin_43", "bin_44", "bin_45", "bin_46", "bin_47", "bin_48",
-                                            "bin_49", "bin_50", "bin_51", "bin_52", "bin_53", "bin_54", "bin_55", "bin_56",
-                                            "bin_57", "bin_58", "bin_59", "bin_60", "bin_61", "bin_62", "bin_63", "bin_64",
-                                            "bin_65", "bin_66", "bin_67", "bin_68", "bin_69", "bin_70", "bin_71", "bin_72",
-                                            "bin_73", "bin_74", "bin_75", "bin_76", "bin_77", "bin_78", "bin_79", "bin_80",
-                                            "bin_81", "bin_82", "bin_83", "bin_84", "bin_85", "bin_86", "bin_87", "bin_88",
-                                            "bin_89", "bin_90", "bin_91", "bin_92", "bin_93", "bin_94", "bin_95", "bin_96",
-                                            "bin_97", "bin_98", "bin_99", "bin_100", "bin_101", "bin_102", "bin_103", "bin_104",
-                                            "bin_105", "bin_106", "bin_107", "bin_108", "bin_109", "bin_110", "bin_111", "bin_112",
-                                            "bin_113", "bin_114", "bin_115", "bin_116", "bin_117", "bin_118", "bin_119", "bin_120",
-                                            "bin_121", "bin_122", "bin_123", "bin_124", "bin_125", "bin_126", "bin_127", "bin_128"])
-    df['cluster'] = labels
-
-    from pandas.plotting import parallel_coordinates
-
-    plt.figure()
-    parallel_coordinates(df, 'cluster', color=colors)
-    plt.title('Parallel Coordinates Plot of Histograms')
-    plt.xlabel('Bins')
-    plt.ylabel('Value')
-    plt.savefig(os.path.join(directory_pix, 'stats', str(n) + '_parallel.png'))
-
     print('MOVING')
     # Move the images to the corresponding folders
-    for i, label in enumerate(labels):
-        # print('Iteration: '+str(i)+' Label: '+str(label))
-        files2 = [f for f in os.listdir(directory_pix) if os.path.isfile(os.path.join(directory_pix, f))]
-        if len(files2) > 0:
-            # print('shaw ok')
-            try:
-                shutil.move(os.path.join(directory_pix, files[i]), directory_pix+'/'+str(label[0]+1))
-                shutil.move(os.path.join(directory_greyscale, files[i]), directory_greyscale+'/'+str(label[0]+1))
- 
-            except:
-                print('Label: '+str(label))
-                print("error in moving index {}".format(i))
-        else:
-            break
+    for i, label in enumerate(tqdm(labels)):
+
+        try:
+            shutil.move(os.path.join(directory_pix, files[i]), directory_pix+'/'+str(label[0]+1))
+            # shutil.move(os.path.join(directory_greyscale, files[i]), directory_greyscale+'/'+str(label[0]+1))
+
+        except:
+            print('Label: '+str(label))
+            print("error in moving index {}".format(i))
+        
 
 
 def move(parent_dir, num_dirs):
-    n = num_dirs
     # Define the path to the destination directory
     dest_dir = parent_dir
 
     # Iterate over all the numeric folders
-    for folder in range(1, n+1):
+    for folder in  range(1, num_dirs+1):
         # Define the path of the current folder
         src_dir = os.path.join(parent_dir, str(folder))
         # Get a list of all the files in the current folder
         files = os.listdir(src_dir)
-        # Iterate over all the files in the current folder
-        for file in files:
-            # Define the path of the current file
+        # Move all the files in the current folder to the destination directory
+        for file in tqdm(files):
             src_file = os.path.join(src_dir, file)
-            # Move the file to the destination directory
             shutil.move(src_file, dest_dir)
-        # Delete the current folder
+        # Remove the current folder
         os.rmdir(src_dir)
 
-    print("All images have been moved to the {} folder and numeric folders have been deleted".format(dest_dir))
+    print(f"All images have been moved to the {dest_dir} folder and numeric folders have been deleted")
 
 def fit_random(parent_dir, num_dirs):
-
-    n = num_dirs    
-
     # Define the path to the source directory
     src_dir = parent_dir
 
     # Get a list of all the files in the source directory
     files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f)) and f.endswith(".png")]
 
-    # Iterate over all the files in the source directory
-    for file in files:
-        # Define the path of the current file
-        src_file = os.path.join(src_dir, file)
-        # Generate a random numeric folder from 1-8
-        random_folder = random.randint(1, n)
-        # Define the path of the destination directory
-        dest_dir = os.path.join(parent_dir, str(random_folder))
-        # Create the destination directory if it does not exist
+    # Generate a list of random numeric folders from 1-8
+    dest_dirs = [os.path.join(parent_dir, str(i)) for i in random.sample(range(1, num_dirs+1), len(files))]
+    # Create the destination directories if they do not exist
+    for dest_dir in dest_dirs:
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
-        # Move the file to the destination directory
-        shutil.move(src_file, dest_dir)
+
+    # Create a list of tuples where each tuple contains the source file path and the destination directory path
+    file_dest_pairs = [(os.path.join(src_dir, file), dest_dir) for file, dest_dir in zip(files, dest_dirs)]
+
+    # Move the files to the destination directories in batches
+    for i in range(0, len(file_dest_pairs), 100):
+        batch = file_dest_pairs[i:i+100]
+        src_files, dest_dirs = zip(*batch)
+        for src_file, dest_dir in zip(src_files, dest_dirs):
+            shutil.move(src_file, dest_dir)
+    
     print("All images have been moved to random numeric folders from 1-8")
 
 
@@ -190,8 +160,8 @@ def fit_random(parent_dir, num_dirs):
 
 
 film = sys.argv[1]
-widths = [1600, 1024, 640, 128, 48]
-heights = [900, 576, 360, 72, 27]
+widths = [16]
+heights = [9]
 for i, res in enumerate(widths):
     similarities_cluster = [] 
     similarities_random = []
@@ -206,11 +176,10 @@ for i, res in enumerate(widths):
         similarities_random.append(get_similarity(film+'/pix/'+str(res)+'x'+str(heights[i]), num_dirs))
         move(film+'/pix/'+str(res)+'x'+str(heights[i]), num_dirs)
 
-    x = range(1, 20)
+    x = list(range(1, 15))
 
-    plt.plot(x, similarities_cluster, '-b', label='Cluster')
-    plt.plot(x, similarities_random, '-r', label='Random')
-    plt.xlabel('Number of clusters')
-    plt.ylabel('Similarity Score')
-    plt.legend(loc='upper left')
-    plt.savefig(film+'/pix'+str(res)+'x'+str(heights[i])+'/stats/chart.png')
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=similarities_cluster, name='Cluster', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=x, y=similarities_random, name='Random', line=dict(color='red')))
+    fig.update_layout(xaxis_title='Number of clusters', yaxis_title='Similarity Score', legend=dict(x=0, y=1))
+    pio.write_image(fig, film+'/pix'+str(res)+'x'+str(heights[i])+'/stats/chart.png', format='png')
